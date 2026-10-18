@@ -13,7 +13,7 @@ Native Android/OpenXR edition of the Tribes recreation. The web edition remains 
 
 ## Build the APK
 
-Open **Actions → Build Meta Quest APK → Run workflow** in the repository. After success, download **TribesVR-MetaQuest-arm64** from **Artifacts** and unzip it. It contains `TribesVR-Quest-debug.apk` plus its SHA-256 checksum. The workflow also saves build logs and checks that the APK is signed, includes arm64/OpenXR, and declares the Quest VR launch category.
+Open **Actions → Build Android and Meta Quest APKs → Run workflow** in the repository. After success, download **TribesVR-MetaQuest-arm64** from **Artifacts** and unzip it. It contains `TribesVR-Quest-debug.apk` plus its SHA-256 checksum. The workflow also saves build logs and checks that the APK is signed, includes arm64/OpenXR, and declares the Quest VR launch category.
 
 This is a debug-signed sideload build, not a Meta Store release. The CI caches its debug key so subsequent builds can normally update an installed copy. If that cache is cleared, uninstall the older debug build before installing one signed with the new key.
 

@@ -8,6 +8,7 @@ on:
       - 'assets/**'
       - 'tools/prepare_quest.py'
       - 'tools/setup_quest_ci.py'
+      - 'tools/validate_phone_manifest.py'
       - '.github/workflows/quest-apk.yml'
 permissions:
   contents: read
@@ -130,7 +131,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.1/aapt" dump badging build/Tribes360-Android-debug.apk | tee build/phone-apk-info.txt
           grep -q "package: name='cat.skirep.tribes360'" build/phone-apk-info.txt
           "$ANDROID_HOME/build-tools/35.0.1/aapt" dump xmltree build/Tribes360-Android-debug.apk AndroidManifest.xml > build/phone-manifest.txt
-          grep -q 'launchable-activity:' build/phone-apk-info.txt
+          python3 tools/validate_phone_manifest.py build/phone-manifest.txt
           if grep -q 'oculus.intent.category.VR' build/phone-manifest.txt; then echo 'Phone APK must not require the VR launcher'; exit 1; fi
           if grep -q 'android.intent.category.HOME' build/phone-manifest.txt; then echo 'Phone APK must not replace the home launcher'; exit 1; fi
           sha256sum build/Tribes360-Android-debug.apk > build/Tribes360-Android-debug.apk.sha256
