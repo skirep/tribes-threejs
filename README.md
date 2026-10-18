@@ -38,3 +38,9 @@ No build is required. The pinned Three.js 0.180.0 runtime is vendored under `ven
 - Original music: Adam Skorupa (Scorpik) and Jacek Dojwa (Falcon).
 
 Original graphics, meshes, and music remain the property of their authors; public archival availability is not a blanket commercial licence. This is an unofficial credited fan recreation. Three.js is MIT licensed; its licence is included in `vendor/THREE-LICENSE.txt`.
+
+## Meta Quest / Android VR
+
+A native **Godot 4.6.2 + OpenXR** port lives in [`quest/`](quest/README.md). It loads the same corrected models, textures and soundtrack as the Three.js edition. It renders stereo 3D around the viewer with headset tracking, rather than displaying the website on a flat Android WebView.
+
+The [Build Meta Quest APK workflow](../../actions/workflows/quest-apk.yml) builds a signed arm64 APK for sideloading. Run it manually with **Run workflow**, or push a change to the Quest/shared asset files. Download the **TribesVR-MetaQuest-arm64** artifact from the successful run.

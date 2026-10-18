@@ -1,0 +1,120 @@
+name: Build Meta Quest APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'quest/**'
+      - 'assets/**'
+      - 'tools/prepare_quest.py'
+      - 'tools/setup_quest_ci.py'
+      - '.github/workflows/quest-apk.yml'
+permissions:
+  contents: read
+concurrency:
+  group: quest-apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GODOT_VERSION: 4.6.2
+      VENDORS_VERSION: 5.1.0-stable
+      GODOT_SILENCE_ROOT_WARNING: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.1' 'ndk;28.1.13356709' 'cmake;3.10.2.4988404'
+      - name: Download pinned Godot and OpenXR vendors
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o /tmp/godot.zip
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.tpz
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo install -m755 "/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -q /tmp/templates.tpz -d /tmp/templates
+          cp -a /tmp/templates/templates/. "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+          mkdir -p quest/android/build
+          unzip -q /tmp/templates/templates/android_source.zip -d quest/android/build
+          echo "${GODOT_VERSION}.stable" > quest/android/.build_version
+          chmod +x quest/android/build/gradlew
+          curl --fail --location --retry 3 "https://github.com/GodotVR/godot_openxr_vendors/releases/download/${VENDORS_VERSION}/godotopenxrvendorsaddon.zip" -o /tmp/vendors.zip
+          unzip -q /tmp/vendors.zip -d /tmp/vendors
+          cp -a /tmp/vendors/asset/addons quest/
+      - name: Stage shared assets and Android settings
+        run: |
+          python3 tools/prepare_quest.py
+          python3 tools/setup_quest_ci.py
+          mkdir -p build
+      - name: Create default controller bindings and import project
+        run: |
+          godot --headless --xr-mode off --path quest --script res://scripts/create_action_map.gd
+          godot --headless --xr-mode off --path quest --editor --import 2>&1 | tee build/import.log
+      - name: Validate all immersive chapters
+        run: |
+          set -o pipefail
+          python3 -m unittest discover -s tests -v
+          godot --headless --xr-mode off --path quest -- --smoke-test 2>&1 | tee build/smoke.log
+          grep -q 'QUEST_SMOKE_OK' build/smoke.log
+          if grep -q 'SCRIPT ERROR:' build/import.log build/smoke.log; then exit 1; fi
+      - name: Restore stable debug signing key
+        id: signing-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/tribes-quest-debug.keystore
+          key: tribes-quest-debug-signing-v1
+      - name: Create sideload signing key if absent
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/tribes-quest-debug.keystore" ]; then
+            keytool -genkeypair -noprompt -keystore "$HOME/.android/tribes-quest-debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Tribes VR Debug'
+          fi
+      - name: Export arm64 OpenXR APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/tribes-quest-debug.keystore"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android
+          godot --headless --xr-mode off --path quest --export-debug 'Meta Quest' ../build/TribesVR-Quest-debug.apk 2>&1 | tee build/export.log
+          test -s build/TribesVR-Quest-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/TribesVR-Quest-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump badging build/TribesVR-Quest-debug.apk | tee build/apk-info.txt
+          grep -q 'arm64-v8a' build/apk-info.txt
+          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump xmltree build/TribesVR-Quest-debug.apk AndroidManifest.xml > build/manifest.txt
+          grep -q 'oculus.intent.category.VR' build/manifest.txt
+          unzip -l build/TribesVR-Quest-debug.apk | grep 'lib/arm64-v8a/libopenxr_loader.so'
+          sha256sum build/TribesVR-Quest-debug.apk > build/TribesVR-Quest-debug.apk.sha256
+      - name: Upload installable APK and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: TribesVR-MetaQuest-arm64
+          path: |
+            build/TribesVR-Quest-debug.apk
+            build/TribesVR-Quest-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quest-build-logs
+          path: |
+            build/*.log
+            build/*info.txt
+            build/manifest.txt
+          if-no-files-found: ignore
+      - name: Build summary
+        run: |
+          echo '### Tribes VR for Meta Quest' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Download **TribesVR-MetaQuest-arm64** from Artifacts, unzip it and sideload the APK with SideQuest or adb install -r. Launch it from Unknown Sources.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A/trigger: play-pause. B: next chapter. Y: previous. Grip: info. Right stick: snap turn. Physical headset validation is still required.' >> "$GITHUB_STEP_SUMMARY"
