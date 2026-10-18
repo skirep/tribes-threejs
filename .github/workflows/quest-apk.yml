@@ -1,4 +1,4 @@
-name: Build Meta Quest APK
+name: Build Android and Meta Quest APKs
 on:
   workflow_dispatch:
   push:
@@ -68,7 +68,11 @@ jobs:
           python3 -m unittest discover -s tests -v
           godot --headless --xr-mode off --path quest -- --smoke-test 2>&1 | tee build/smoke.log
           grep -q 'QUEST_SMOKE_OK' build/smoke.log
-          if grep -q 'SCRIPT ERROR:' build/import.log build/smoke.log; then exit 1; fi
+          godot --headless --xr-mode off --path quest --script res://scripts/test_phone_motion.gd 2>&1 | tee build/phone-motion.log
+          grep -q 'PHONE_MOTION_OK' build/phone-motion.log
+          godot --headless --xr-mode off --path quest -- --phone-test 2>&1 | tee build/phone-smoke.log
+          grep -q 'PHONE_SMOKE_OK' build/phone-smoke.log
+          if grep -q 'SCRIPT ERROR:' build/import.log build/smoke.log build/phone-motion.log build/phone-smoke.log; then exit 1; fi
       - name: Restore stable debug signing key
         id: signing-cache
         uses: actions/cache@v4
@@ -106,6 +110,32 @@ jobs:
             build/TribesVR-Quest-debug.apk.sha256
           if-no-files-found: error
           retention-days: 30
+      - name: Export Android phone APK with gyro controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/tribes-quest-debug.keystore"
+          export GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey
+          export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android
+          godot --headless --xr-mode off --path quest --export-debug 'Android Mobile' ../build/Tribes360-Android-debug.apk 2>&1 | tee build/phone-export.log
+          test -s build/Tribes360-Android-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/Tribes360-Android-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump badging build/Tribes360-Android-debug.apk | tee build/phone-apk-info.txt
+          grep -q "package: name='cat.skirep.tribes360'" build/phone-apk-info.txt
+          grep -q 'launchable-activity:' build/phone-apk-info.txt
+          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump xmltree build/Tribes360-Android-debug.apk AndroidManifest.xml > build/phone-manifest.txt
+          if grep -q 'oculus.intent.category.VR' build/phone-manifest.txt; then echo 'Phone APK must not require the VR launcher'; exit 1; fi
+          if grep -q 'android.intent.category.HOME' build/phone-manifest.txt; then echo 'Phone APK must not replace the home launcher'; exit 1; fi
+          sha256sum build/Tribes360-Android-debug.apk > build/Tribes360-Android-debug.apk.sha256
+      - name: Upload Android mobile APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tribes360-Android-arm64
+          path: |
+            build/Tribes360-Android-debug.apk
+            build/Tribes360-Android-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -114,10 +144,11 @@ jobs:
           path: |
             build/*.log
             build/*info.txt
-            build/manifest.txt
+            build/*manifest.txt
           if-no-files-found: ignore
       - name: Build summary
         run: |
-          echo '### Tribes VR for Meta Quest' >> "$GITHUB_STEP_SUMMARY"
+          echo '### Tribes 360 for Android + Meta Quest' >> "$GITHUB_STEP_SUMMARY"
           echo 'Download **TribesVR-MetaQuest-arm64** from Artifacts, unzip it and sideload the APK with SideQuest or adb install -r. Launch it from Unknown Sources.' >> "$GITHUB_STEP_SUMMARY"
           echo 'A/trigger: play-pause. B: next chapter. Y: previous. Grip: info. Right stick: snap turn. Physical headset validation is still required.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'For a normal Android phone, download **Tribes360-Android-arm64**. Install its APK and open Tribes 360 from the app drawer. Move the phone to look around, drag to look by touch, and use Center to reset the view.' >> "$GITHUB_STEP_SUMMARY"

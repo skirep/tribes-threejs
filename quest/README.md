@@ -1,4 +1,4 @@
-# Tribes VR · Meta Quest
+# Tribes VR · Meta Quest and Android phones
 
 Native Android/OpenXR edition of the Tribes recreation. The web edition remains Three.js; the headset renderer uses Godot 4.6.2 and OpenXR Vendors 5.1.0. Both use the same corrected original model JSON, UVs, textures, and local music.
 
@@ -52,3 +52,20 @@ godot --headless --xr-mode off --path quest -- --smoke-test
 The smoke test constructs every scene, loads shared textures/music, and visits every chapter without needing an XR runtime. Assets are staged into `quest/assets/` at build time, so originals are not duplicated in git. Android SDK/Gradle and export-template setup is specified fully in `.github/workflows/quest-apk.yml`.
 
 Original Pulse/Melon artwork, meshes and music retain their original authorship; see the root README for credits.
+
+## Android phone edition · Tribes 360
+
+The same workflow also creates **Tribes360-Android-arm64**. Install `Tribes360-Android-debug.apk` and open **Tribes 360** from the normal Android app library. It has a separate package ID (`cat.skirep.tribes360`) and a Regular Android export preset: no VR runtime or controller is needed. The current build targets arm64 Android 10 or newer.
+
+Hold the phone in landscape orientation, tap **Centrar** while pointing at the scene, then move it to look around. Local quaternion integration uses Godot's screen-aligned gyroscope samples; gentle gravity correction reduces tilt drift. Heading is relative and can drift over time, so **Centrar** resets it. No compass/location permission is used.
+
+You can always drag on the scene to look around, including when a device has no gyroscope. **Gir: ON/OFF** enables or disables sensor control. The touch interface has play/pause, previous/next chapter, a seek bar, sound and recenter controls. Playback pauses when the app loses focus. This mode changes the viewing direction, not the observer's location.
+
+Additional checks:
+
+```sh
+godot --headless --xr-mode off --path quest --script res://scripts/test_phone_motion.gd
+godot --headless --xr-mode off --path quest -- --phone-test
+```
+
+These test full turns, pitch/gravity fusion, recenter, touch fallback, disabled sensors, resume timing and actual playback/chapter controls. Real Android sensor-axis feel and device rendering still need physical phone testing.

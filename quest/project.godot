@@ -2,13 +2,15 @@ config_version=5
 
 [application]
 config/name="Tribes VR"
-config/version="1.1.0"
+config/version="1.2.0"
 run/main_scene="res://main.tscn"
 
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/handheld/orientation=0
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
@@ -22,3 +24,7 @@ openxr/default_action_map="res://openxr_action_map.tres"
 openxr/reference_space=1
 shaders/enabled=true
 
+
+[input_devices]
+sensors/enable_gyroscope=true
+sensors/enable_gravity=true

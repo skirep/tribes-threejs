@@ -43,4 +43,8 @@ Original graphics, meshes, and music remain the property of their authors; publi
 
 A native **Godot 4.6.2 + OpenXR** port lives in [`quest/`](quest/README.md). It loads the same corrected models, textures and soundtrack as the Three.js edition. It renders stereo 3D around the viewer with headset tracking, rather than displaying the website on a flat Android WebView.
 
-The [Build Meta Quest APK workflow](../../actions/workflows/quest-apk.yml) builds a signed arm64 APK for sideloading. Run it manually with **Run workflow**, or push a change to the Quest/shared asset files. Download the **TribesVR-MetaQuest-arm64** artifact from the successful run.
+The [Android + Meta Quest APK workflow](../../actions/workflows/quest-apk.yml) builds a signed arm64 APK for sideloading. Run it manually with **Run workflow**, or push a change to the Quest/shared asset files. Download the **TribesVR-MetaQuest-arm64** artifact from the successful run.
+
+### Normal Android phones
+
+The workflow also publishes **Tribes360-Android-arm64**, with an APK that opens as a normal Android app. Move the phone to look around the 3D scenes, drag with a finger, or use **Centrar** to reset the view. Touch controls cover playback, chapters, seeking, sound and the gyro toggle. It uses the same shared scene resources and works without a VR headset.

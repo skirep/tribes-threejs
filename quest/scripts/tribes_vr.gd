@@ -1,6 +1,7 @@
 extends Node3D
 ## Native OpenXR port. Scene geometry shares the corrected web asset data.
 ## XRCamera3D is driven only by tracking; camera cuts move its origin once.
+const PhoneMotion = preload("res://scripts/phone_motion.gd")
 const UNIT := 0.225
 const DURATION := 526.0
 const MUSIC_CUT := 237.5
@@ -33,6 +34,16 @@ var hud_enabled := false
 var rng := RandomNumberGenerator.new()
 var turn_cooldown := 0.0
 var right: XRController3D
+var phone_motion := PhoneMotion.new()
+var phone_status: Label
+var phone_play: Button
+var phone_gyro: Button
+var phone_seek: HSlider
+var phone_canvas: CanvasLayer
+var drag_finger := -1
+var mouse_dragging := false
+var is_scrubbing := false
+var muted := false
 
 func _ready() -> void:
 	rng.seed = 1997
@@ -55,8 +66,27 @@ func _ready() -> void:
 		player.volume_db = -3.0
 		add_child(player)
 		music.append(player)
-	_select_scene(0)
+	_animate()
 	_update_hud()
+	if "--phone-test" in OS.get_cmdline_user_args():
+		assert(not xr_active)
+		assert(is_instance_valid(phone_play))
+		assert(is_instance_valid(phone_seek))
+		phone_play.pressed.emit()
+		assert(playing)
+		phone_play.pressed.emit()
+		assert(not playing)
+		phone_motion.drag(Vector2(60,-25))
+		assert(not phone_motion.view_basis().is_equal_approx(Basis.IDENTITY))
+		_center_phone()
+		assert(phone_motion.view_basis().is_equal_approx(Basis.IDENTITY))
+		_skip(1)
+		assert(elapsed == TIMES[1])
+		print("PHONE_SMOKE_OK: touch controls, recenter, chapters and camera loaded")
+		# Give the audio mixer one cycle to release a just-stopped MP3 voice.
+		await get_tree().create_timer(0.1).timeout
+		get_tree().quit(0)
+		return
 	if "--smoke-test" in OS.get_cmdline_user_args():
 		for t in TIMES:
 			elapsed = t
@@ -86,8 +116,10 @@ func _setup_viewer() -> void:
 		flat_camera.position.y = 1.6
 		origin.add_child(flat_camera)
 		flat_camera.current = true
-		if OS.get_name() == "Android":
-			push_error("OpenXR runtime unavailable: this APK requires a Quest/OpenXR headset.")
+		flat_camera.near = 0.05
+		flat_camera.far = 400.0
+		flat_camera.fov = 75.0
+		_setup_phone_controls()
 	for hand in ["left_hand","right_hand"]:
 		var controller := XRController3D.new()
 		controller.tracker = hand
@@ -380,6 +412,9 @@ func _process(delta: float) -> void:
 		if absf(stick.x)>0.7:
 			origin.rotation.y -= signf(stick.x)*PI/6
 			turn_cooldown = 0.3
+	if not xr_active:
+		phone_motion.update(Input.get_gyroscope(),Input.get_gravity(),delta)
+		flat_camera.basis = phone_motion.view_basis()
 	_update_hud()
 
 func _animate() -> void:
@@ -428,7 +463,8 @@ func _update_particles(t: float) -> void:
 		particles.multimesh.set_instance_transform(i,Transform3D(Basis.IDENTITY,p))
 
 func _sync_music() -> void:
-	if music.size()!=2: return
+	# A headless runner has no audio mixer callback; validate UI without starting voices.
+	if DisplayServer.get_name() == "headless" or music.size()!=2: return
 	var selected := 0 if elapsed<MUSIC_CUT else 1
 	for i in range(2):
 		if i!=selected or not playing:
@@ -466,7 +502,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _update_hud() -> void:
 	if not is_instance_valid(hud): return
-	hud.visible = not playing or hud_enabled or elapsed<8
+	hud.visible = xr_active and (not playing or hud_enabled or elapsed<8)
+	_update_phone_controls()
 	var stamp := "%02d:%02d" % [int(elapsed)/60,int(elapsed)%60]
 	var title_: String = TITLES[maxi(chapter,0)]
 	if elapsed>=495: title_="PULSE × MELON DEZIGN\nAlex · Unreal · Camel · Antony\nMusic: Scorpik · Falcon"
@@ -476,6 +513,13 @@ func _session_unfocused() -> void:
 	playing = false
 	_sync_music()
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		playing = false
+		mouse_dragging = false
+		drag_finger = -1
+		_sync_music()
+
 func _session_focused() -> void:
 	# Deliberately stays paused after returning from the Quest system menu.
 	_update_hud()
@@ -483,3 +527,100 @@ func _session_focused() -> void:
 func _exit_tree() -> void:
 	for template in templates.values():
 		template.free()
+
+func _setup_phone_controls() -> void:
+	phone_canvas = CanvasLayer.new()
+	add_child(phone_canvas)
+	var layout := Control.new()
+	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	phone_canvas.add_child(layout)
+	var header := PanelContainer.new()
+	header.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	header.offset_left = 24
+	header.offset_top = 12
+	header.offset_right = -24
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layout.add_child(header)
+	phone_status = Label.new()
+	phone_status.add_theme_font_size_override("font_size",22)
+	phone_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	phone_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(phone_status)
+	var panel := PanelContainer.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.offset_left = 24
+	panel.offset_right = -24
+	panel.offset_top = -132
+	panel.offset_bottom = -14
+	layout.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation",12)
+	panel.add_child(column)
+	phone_seek = HSlider.new()
+	phone_seek.min_value = 0
+	phone_seek.max_value = DURATION
+	phone_seek.step = 0.1
+	phone_seek.custom_minimum_size.y = 36
+	phone_seek.drag_started.connect(func(): is_scrubbing=true)
+	phone_seek.drag_ended.connect(func(_changed: bool):
+		is_scrubbing=false
+		elapsed=phone_seek.value
+		_animate()
+		_sync_music())
+	column.add_child(phone_seek)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation",10)
+	column.add_child(row)
+	_phone_button(row,"◀ Anterior",func(): _skip(-1))
+	phone_play = _phone_button(row,"Reproduir",_toggle_play)
+	_phone_button(row,"Següent ▶",func(): _skip(1))
+	_phone_button(row,"Centrar",_center_phone)
+	phone_gyro = _phone_button(row,"Gir: ON",func():
+		phone_motion.set_enabled(not phone_motion.enabled)
+		_update_phone_controls())
+	var sound := _phone_button(row,"So: ON",func():
+		muted=not muted
+		for player in music:
+			player.volume_db = -80.0 if muted else -3.0)
+	sound.pressed.connect(func(): sound.text="So: OFF" if muted else "So: ON")
+
+func _phone_button(row: HBoxContainer, label: String, callback: Callable) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.custom_minimum_size = Vector2(0,58)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size",21)
+	button.pressed.connect(callback)
+	row.add_child(button)
+	return button
+
+func _center_phone() -> void:
+	phone_motion.recenter()
+	if is_instance_valid(flat_camera):
+		flat_camera.basis = Basis.IDENTITY
+
+func _update_phone_controls() -> void:
+	if not is_instance_valid(phone_status): return
+	var stamp := "%02d:%02d" % [int(elapsed)/60,int(elapsed)%60]
+	phone_status.text="TRIBES 360 · " + TITLES[maxi(chapter,0)] + " · " + stamp + "/08:46\nMou el mòbil per mirar · Arrossega amb el dit · Centrar restableix la vista"
+	phone_play.text="Pausa" if playing else "Reproduir"
+	phone_gyro.text="Gir: ON" if phone_motion.enabled else "Gir: OFF"
+	if not is_scrubbing:
+		phone_seek.set_value_no_signal(elapsed)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if xr_active: return
+	# Godot can emulate mouse events from a finger; consume only the real gesture.
+	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION: return
+	if event is InputEventScreenTouch:
+		if event.pressed and drag_finger == -1:
+			drag_finger=event.index
+		elif not event.pressed and event.index==drag_finger:
+			drag_finger=-1
+	elif event is InputEventScreenDrag and event.index==drag_finger:
+		phone_motion.drag(event.relative)
+	elif event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
+		mouse_dragging=event.pressed
+	elif event is InputEventMouseMotion and mouse_dragging:
+		phone_motion.drag(event.relative)
