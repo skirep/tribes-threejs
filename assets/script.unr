@@ -1,0 +1,101 @@
+0 0 Init scene1.exp
+0 1 SetCam 5 0 12.0
+0 1 Play 12.0
+; kid kneeling
+0 32 showcredit
+1 4 showcredit
+1 36 showcredit
+1 37 SetCam 0 140 9.0
+
+;TITLE
+2 10 SetCam 6 250 31.0
+2 32 TitleParticles
+3 64 DeInit
+
+; seq 3, 1 camera boats on head
+3 65 Init scene2.exp
+4 0 Setcam 0 20 27.0
+4 0 Play 27.0
+5 61 DeInit
+5 61 FreeCache
+
+; 3 boats sailing alone
+; seq 4+5, 1 camera
+5 62 Init scene3.exp
+6 0 Play 40.0
+6 63 DeInit
+
+; seq 6, 4 cameras
+6 64 Init scene4.exp
+;GAFFO VISION (pano)
+7 0 SetCam 0 0 3.0
+7 0 Play 3.0
+;BOATS come out behind rock
+8 0 SetCam 1 45 20.0
+; trav to Gafoo
+9 0 SetCam 2 0 18.0
+; BOATS sailing
+10 0 SetCam 3 260 55.0
+
+10 29 DeInit
+
+
+10 30 Init scene5.exp
+; gafoo run-------
+11 0 Play 44.0
+11 0 SetCam 0 10 44.0
+; boat sail (far view) after gafoo
+12 0 SetCam 1 0 15.0
+; gafoo run
+13 0 SetCam 2 15 50.0
+; trav to hunter, roto boat
+14 0 SetCam 3 360 15.0
+;gafoo run  OK
+15 0 SetCam 4 3 65.0
+;face of girl looking---------- 
+15 32 SetCam 7 400 25.0
+; gafoo run 35
+16 0 SetCam 6 0 45.0
+; trav to hunter, rising gun-----
+17 0 SetCam 5 735 23.0
+17 30 DeInit
+17 30 FreeCache
+
+; seq 8, 7 cameras
+17 31 Init scene6.exp
+;gafoo running, it stops; scene OK
+18 0 SetCam 0 48 28.0
+18 0 Play 42.0
+;girl gun down-OK---pb of sorting before fr65
+18 41 SetCam 6 120 20.0
+;boats stop 250 15 OK
+19 32 SetCam 3 260 12.0
+; kid close shot, roto OK
+20 0 Setcam 2 0 30.0
+;back of KID tatoo effect 140 ok
+21 0 SetCam 4 120 20.0
+21 0 TatooMorph
+; KID roto again, until half face---------
+22 0 Setcam 2 170 33.0
+23 0 InitDof1
+;the first picture "Normal" shouldn't be shown
+;we should have something like "CamToKidDof1" in first
+; (no fading between cam and pic has more impact thanks to the music)
+23 0 NormalToKidDof1 100.0
+23 22 KidSays
+24 0 KidToGirlDof1 100.0
+24 22 GrlSays
+; travelling into glasses
+25 0 SetCam 6 500 45.0
+25 0 Play 32.0
+25 63 DeInit
+25 63 Init eyetun.exp
+26 00 Play 3.0
+26 30 DeInit
+26 30 Init eyepeop.exp
+26 31 Play 45.0
+30 0 InitHandy0
+33 32 ShowHandy1
+34 0 DeInit
+34 0 TheEnd
+@

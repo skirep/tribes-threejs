@@ -1,0 +1,130 @@
+;-------------------
+;TRAVEL
+;--------------------
+0 0 Init travel.exp
+0 1 Setcam 0 0 45.0
+0 1 Play 45.0
+0 60 DeInit
+;--------------------------------
+; 1- OUTSIDE>INSDE TEMPLE
+;--------------------------------
+0 61 Init scene7.exp
+0 61 HideObjects TPL
+0 61 NoFlares
+0 61 Setcam 4 0 32.0
+0 61 Play 32.0
+;rise to temple
+3 0 Setcam 6 5 51.0
+;temple close
+3 49 Setcam 1 0 20.0
+;temple close 2 longer
+4 0 Setcam 3 0 20.0
+;tpl rotation (135 normal)
+4 32 Setcam 2 135 40.0
+;transition
+5 35 Setcam 5 1580 29.0
+; 5 35 Setcam 5 1320 40.0
+6 40 UnhideObjects TPL
+6 40 HideObjects CTY
+7 0 ParticlesOn
+7 0 YesFlares
+;wide rotation around temple room 1800
+9 0 Setcam 7 1820 30.0
+;----------------------------
+; 2-INSIDE TEMPLE, particles scene
+;--------------------------------
+;roto around temple room (angle)
+10 0 Setcam 10 2200 25.0
+10 0 Play 25.0
+10 17 Setcam 11 2750 45.0
+;travelling to close view over Kid's face (for a close effect..)
+10 33 Setcam 9 3000 50.0
+;cam dive from roof to grd
+11 0 SEtcam 8 3550 52.0
+;---hands 11 30  fr4000
+11 25 Setcam 12 4000 62.0
+;cam rise from grd to roof
+12 0 Setcam 8 3100 30.0
+;TRANSTRAVELLING
+12 27 Setcam 14 2600 50.0
+12 47 DeInit
+
+;----------------------------------
+; 3-THE WELL
+;----------------------------------
+12 47 Init scene8.exp
+;11 47 SetCam 0 0 70.0
+12 47 SetCam 1 55 70.0
+12 47 Play 70.0
+;12 0 Setcam 1 55 25.0
+13 33 Setcam 2 470 60.0
+14 0 Setcam 7 1000 50.0
+;13 0 Setcam 4 700 50.0
+14 33 Setcam 2 750 60.0
+14 49 Setcam 7 1300 50.0
+; over view, mask is coming
+15 0 Setcam 5 2700 30.0
+;feet in front
+15 20 Setcam 3 2720 40.0
+;kid crossing mask
+15 32 Setcam 6 2750 20.0
+;mask filling the screen
+16 00 Setcam 5 2900 15.0
+16 20 CrossEthno
+17 20 DeInit
+17 20 FreeCache
+18 00 Init girl.exp
+18 00 Play 40.0
+20 0 DeInit
+20 0 FreeCache
+;19 61 DeInit
+;19 61 FreeCache
+20 1 Init scene9.exp
+;out of darkness
+20 1  Setcam 1 0 40.0
+20 1  Play 40.0
+;ship gets out of canyon (overview)
+21 0 Setcam 0 770 25.0
+;close shot of ship sailing
+21 16 Setcam 2 875 30.0
+;behind boat, sailing to root
+21 32 Setcam 3 900 10.0
+23 0 DeInit
+23 0 Init creds.exp
+23 1 Setcam 0 0 17.0
+23 1 Play 17.0
+24 0 SetCam 1 0 11.0
+25 0 SetCam 2 0 11.0
+26 0 LoadEndScreens
+; remember, NO deinit after the creds.exp, something fucked up and hangs
+; if I deinit here :(
+
+; cross, from/to black, number of cred pics (8 of them exist), fps
+26 0 Cross 0 0 120.0   ; from black to picture : 0, from picture to black : 1
+26 0 PlayFade
+26 15 Cross 1 0 120.0   ; from black to picture : 0, from picture to black : 1
+26 15 PlayFade
+
+26 30 Cross 0 1 120.0   ; from black to picture : 0, from picture to black : 1
+26 30 PlayFade
+26 45 Cross 1 1 120.0   ; from black to picture : 0, from picture to black : 1
+26 45 PlayFade
+
+26 60 Cross 0 2 120.0   ; from black to picture : 0, from picture to black : 1
+26 60 PlayFade
+27 15 Cross 1 2 120.0   ; from black to picture : 0, from picture to black : 1
+27 15 PlayFade
+
+27 30 Cross 0 3 120.0   ; from black to picture : 0, from picture to black : 1
+27 30 PlayFade
+27 45 Cross 1 3 120.0   ; from black to picture : 0, from picture to black : 1
+27 45 PlayFade
+
+27 60 Cross 0 6 120.0   ; from black to picture : 0, from picture to black : 1
+27 60 PlayFade
+29 00 Cross 1 6 120.0   ; from black to picture : 0, from picture to black : 1
+29 00 PlayFade
+
+29 30 TheEnd
+128 128 TheEnd
+@

@@ -1,0 +1,26 @@
+{
+  "name": "tribes-threejs",
+  "version": "1.0.0",
+  "description": "Three.js recreation of Tribes by Pulse &amp; Melon Dezign (1997).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "python3 -m http.server 8000",
+    "check": "node --check main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skirep/tribes-threejs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/skirep/tribes-threejs/issues"
+  },
+  "homepage": "https://github.com/skirep/tribes-threejs#readme",
+  "dependencies": {
+    "three": "0.180.0"
+  }
+}
