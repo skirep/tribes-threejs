@@ -47,6 +47,7 @@ jobs:
           unzip -q /tmp/templates.tpz -d /tmp/templates
           cp -a /tmp/templates/templates/. "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
           mkdir -p quest/android/build
+          touch quest/android/.gdignore
           unzip -q /tmp/templates/templates/android_source.zip -d quest/android/build
           echo "${GODOT_VERSION}.stable" > quest/android/.build_version
           chmod +x quest/android/build/gradlew
