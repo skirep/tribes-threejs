@@ -118,13 +118,19 @@ jobs:
           export GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$HOME/.android/tribes-quest-debug.keystore"
           export GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey
           export GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android
+          # OpenXR's export modifies the Gradle template on disk. Start the
+          # regular Android export from a clean template (including its launcher).
+          rm -rf quest/android/build
+          mkdir -p quest/android/build
+          unzip -q /tmp/templates/templates/android_source.zip -d quest/android/build
+          chmod +x quest/android/build/gradlew
           godot --headless --xr-mode off --path quest --export-debug 'Android Mobile' ../build/Tribes360-Android-debug.apk 2>&1 | tee build/phone-export.log
           test -s build/Tribes360-Android-debug.apk
           "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/Tribes360-Android-debug.apk
           "$ANDROID_HOME/build-tools/35.0.1/aapt" dump badging build/Tribes360-Android-debug.apk | tee build/phone-apk-info.txt
           grep -q "package: name='cat.skirep.tribes360'" build/phone-apk-info.txt
-          grep -q 'launchable-activity:' build/phone-apk-info.txt
           "$ANDROID_HOME/build-tools/35.0.1/aapt" dump xmltree build/Tribes360-Android-debug.apk AndroidManifest.xml > build/phone-manifest.txt
+          grep -q 'launchable-activity:' build/phone-apk-info.txt
           if grep -q 'oculus.intent.category.VR' build/phone-manifest.txt; then echo 'Phone APK must not require the VR launcher'; exit 1; fi
           if grep -q 'android.intent.category.HOME' build/phone-manifest.txt; then echo 'Phone APK must not replace the home launcher'; exit 1; fi
           sha256sum build/Tribes360-Android-debug.apk > build/Tribes360-Android-debug.apk.sha256
